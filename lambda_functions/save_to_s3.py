@@ -1,10 +1,13 @@
 import os
 import json
 import boto3
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 s3_client = boto3.client('s3')
 
@@ -12,14 +15,14 @@ def create_bucket_if_not_exists(bucket_name):
     """Create S3 bucket if it doesn't exist"""
     try:
         s3_client.head_bucket(Bucket=bucket_name)
-        print(f"Bucket {bucket_name} already exists.")
+        logger.info(f"Bucket {bucket_name} already exists.")
     except:
-        print(f"Creating bucket {bucket_name}...")
+        logger.info(f"Creating bucket {bucket_name}...")
         try:
             s3_client.create_bucket(Bucket=bucket_name)
-            print(f"Successfully created bucket {bucket_name}.")
+            logger.info(f"Successfully created bucket {bucket_name}.")
         except Exception as e:
-            print(f"Error creating bucket: {e}")
+            logger.error(f"Error creating bucket: {e}")
             return False
     return True
 
@@ -29,10 +32,11 @@ def lambda_handler(event, context):
     city = event.get('city')
 
     if not weather_data or not city:
+        logger.error("Invalid input")
         return {'statusCode': 400, 'body': 'Invalid input'}
 
-    # Ensure the bucket exists before saving data
     if not create_bucket_if_not_exists(bucket_name):
+        logger.error(f"Failed to create S3 bucket: {bucket_name}")
         return {'statusCode': 500, 'body': 'Failed to create S3 bucket'}
 
     timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -46,6 +50,8 @@ def lambda_handler(event, context):
             Body=json.dumps(weather_data),
             ContentType='application/json'
         )
+        logger.info(f"Successfully saved data for {city} to S3: {file_name}")
         return {'statusCode': 200, 'body': f"Data saved to {file_name}"}
     except Exception as e:
+        logger.error(f"Error saving data to S3: {e}")
         return {'statusCode': 500, 'body': str(e)}

@@ -1,21 +1,30 @@
 {
-    "Comment": "Fetch weather data and save to S3",
-    "StartAt": "FetchWeatherData",
+    "Comment": "Fetch weather data and save to S3 for multiple cities",
+    "StartAt": "ProcessCities",
     "States": {
-        "FetchWeatherData": {
-            "Type": "Task",
-            "Resource": "arn:aws:lambda:<region>:<account_id>:function:fetch_weather",
-            "Parameters": {
-                "city.$": "$.city"
-            },
-            "Next": "SaveWeatherData"
-        },
-        "SaveWeatherData": {
-            "Type": "Task",
-            "Resource": "arn:aws:lambda:<region>:<account_id>:function:save_to_s3",
-            "Parameters": {
-                "city.$": "$.city",
-                "weather_data.$": "$.body"
+        "ProcessCities": {
+            "Type": "Map",
+            "Iterator": {
+                "StartAt": "FetchWeatherData",
+                "States": {
+                    "FetchWeatherData": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:lambda:<region>:<account_id>:function:fetch_weather",
+                        "Parameters": {
+                            "city.$": "$.city"
+                        },
+                        "Next": "SaveWeatherData"
+                    },
+                    "SaveWeatherData": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:lambda:<region>:<account_id>:function:save_to_s3",
+                        "Parameters": {
+                            "city.$": "$.city",
+                            "weather_data.$": "$.body"
+                        },
+                        "End": true
+                    }
+                }
             },
             "End": true
         }
